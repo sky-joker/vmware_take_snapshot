@@ -1,5 +1,5 @@
 ---
-- name: Sequence to ensure vmware tools status
+- name: Sequence to take a new snapshot
   when:
     - take_snapshot is defined
     - take_snapshot == "True"
@@ -24,11 +24,6 @@
         name: "{{ vm_name }}.{{ domain }}"
       register: ensure_power_state_result
 
-- name: Sequence to power off vm
-  when:
-    - ensure_power_state_result is defined
-    - ensure_power_state_result.instance.hw_power_status != 'poweredOff'
-  block:
     - name: Shutdown vm
       community.vmware.vmware_guest:
         hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
@@ -54,38 +49,38 @@
       delay: 10
       until: shutdown_vm_result.instance.hw_power_status == "poweredOff"
 
-- name: Take a new snapshot
-  community.vmware.vmware_guest_snapshot:
-    hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
-    username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-    password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
-    validate_certs: "{{ validate_certs | default(false) }}"
-    datacenter: "{{ datacenter_name }}"
-    folder: "{{ vm_folder | default('vm') }}"
-    name: "{{ vm_name }}.{{ domain }}"
-    state: present
-    snapshot_name: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+    - name: Take a new snapshot
+      community.vmware.vmware_guest_snapshot:
+        hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
+        username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        validate_certs: "{{ validate_certs | default(false) }}"
+        datacenter: "{{ datacenter_name }}"
+        folder: "{{ vm_folder | default('vm') }}"
+        name: "{{ vm_name }}.{{ domain }}"
+        state: present
+        snapshot_name: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
 
-- name: Start vm
-  community.vmware.vmware_guest:
-    hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
-    username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-    password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
-    validate_certs: "{{ validate_certs | default(false) }}"
-    datacenter: "{{ datacenter_name }}"
-    folder: "{{ vm_folder | default('vm') }}"
-    name: "{{ vm_name }}.{{ domain }}"
-    state: poweredon
+    - name: Start vm
+      community.vmware.vmware_guest:
+        hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
+        username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        validate_certs: "{{ validate_certs | default(false) }}"
+        datacenter: "{{ datacenter_name }}"
+        folder: "{{ vm_folder | default('vm') }}"
+        name: "{{ vm_name }}.{{ domain }}"
+        state: poweredon
 
-- name: Wait until starting vmware tools
-  community.vmware.vmware_guest_tools_info:
-    hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
-    username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-    password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
-    validate_certs: "{{ validate_certs | default(false) }}"
-    datacenter: "{{ datacenter_name }}"
-    name: "{{ vm_name }}.{{ domain }}"
-  register: get_vm_tools_info_result
-  until: get_vm_tools_info_result.vmtools_info.vm_tools_running_status == "guestToolsRunning"
-  retries: 300
-  delay: 10
+    - name: Wait until starting vmware tools
+      community.vmware.vmware_guest_tools_info:
+        hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
+        username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        validate_certs: "{{ validate_certs | default(false) }}"
+        datacenter: "{{ datacenter_name }}"
+        name: "{{ vm_name }}.{{ domain }}"
+      register: get_vm_tools_info_result
+      until: get_vm_tools_info_result.vmtools_info.vm_tools_running_status == "guestToolsRunning"
+      retries: 300
+      delay: 10
