@@ -1,0 +1,3 @@
+---
+- name: Include take_snapshot tasks
+  ansible.builtin.include_tasks: take_snapshot.yml

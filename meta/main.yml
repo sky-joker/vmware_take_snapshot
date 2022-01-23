@@ -1,0 +1,14 @@
+---
+galaxy_info:
+  role_name: vmware_take_snapshot
+  namespace: sky_joker
+  author: sky-joker
+  description: The role does take a new snapshot
+  license: MIT
+  min_ansible_version: 2.12.1
+  platforms:
+    - name: RHEL
+      versions:
+        - 8
+  galaxy_tags:
+    - vmware
