@@ -8,79 +8,153 @@
       community.vmware.vmware_guest_tools_wait:
         hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
         username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"  # noqa no-log-password
         validate_certs: "{{ validate_certs | default(false) }}"
         folder: "{{ vm_folder | default('vm') }}"
-        name: "{{ vm_name }}.{{ domain }}"
+        name: "{{ item.vm_name }}.{{ domain }}"
+      async: 300
+      poll: 0
+      register: vmware_tools_result
+      loop: "{{ target_vm_info }}"
+
+    - name: Make sure the tasks are until completion
+      ansible.builtin.async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 100
+      delay: 3
+      loop: "{{ vmware_tools_result.results }}"
 
     - name: Ensure power state of VM
       community.vmware.vmware_guest_info:
         hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
         username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"  # noqa no-log-password
         validate_certs: "{{ validate_certs | default(false) }}"
         datacenter: "{{ datacenter_name }}"
         folder: "{{ vm_folder | default('vm') }}"
-        name: "{{ vm_name }}.{{ domain }}"
+        name: "{{ item.vm_name }}.{{ domain }}"
+      async: 300
+      poll: 0
       register: ensure_power_state_result
+      loop: "{{ target_vm_info }}"
+
+    - name: Make sure the tasks are until completion
+      ansible.builtin.async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 100
+      delay: 3
+      loop: "{{ ensure_power_state_result.results }}"
 
     - name: Shutdown vm
       community.vmware.vmware_guest:
         hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
         username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"  # noqa no-log-password
         validate_certs: "{{ validate_certs | default(false) }}"
         datacenter: "{{ datacenter_name }}"
         folder: "{{ vm_folder | default('vm') }}"
-        name: "{{ vm_name }}.{{ domain }}"
+        name: "{{ item.vm_name }}.{{ domain }}"
         state: shutdownguest
+      async: 300
+      poll: 0
+      register: vm_guest_shutdown_result
+      loop: "{{ target_vm_info }}"
+
+    - name: Make sure the tasks are until completion
+      ansible.builtin.async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 100
+      delay: 3
+      loop: "{{ vm_guest_shutdown_result.results }}"
 
     - name: Wait until vm power stop
       community.vmware.vmware_guest_info:
         hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
         username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"  # noqa no-log-password
         validate_certs: "{{ validate_certs | default(false) }}"
         datacenter: "{{ datacenter_name }}"
         folder: "{{ vm_folder | default('vm') }}"
-        name: "{{ vm_name }}.{{ domain }}"
+        name: "{{ item.vm_name }}.{{ domain }}"
       register: shutdown_vm_result
       retries: 60
       delay: 10
       until: shutdown_vm_result.instance.hw_power_status == "poweredOff"
+      loop: "{{ target_vm_info }}"
 
     - name: Take a new snapshot
       community.vmware.vmware_guest_snapshot:
         hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
         username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"  # noqa no-log-password
         validate_certs: "{{ validate_certs | default(false) }}"
         datacenter: "{{ datacenter_name }}"
         folder: "{{ vm_folder | default('vm') }}"
-        name: "{{ vm_name }}.{{ domain }}"
+        name: "{{ item.vm_name }}.{{ domain }}"
         state: present
         snapshot_name: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+      async: 300
+      poll: 0
+      register: take_snapshot_result
+      loop: "{{ target_vm_info }}"
+
+    - name: Make sure the tasks are until completion
+      ansible.builtin.async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 100
+      delay: 3
+      loop: "{{ take_snapshot_result.results }}"
 
     - name: Start vm
       community.vmware.vmware_guest:
         hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
         username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"  # noqa no-log-password
         validate_certs: "{{ validate_certs | default(false) }}"
         datacenter: "{{ datacenter_name }}"
         folder: "{{ vm_folder | default('vm') }}"
-        name: "{{ vm_name }}.{{ domain }}"
+        name: "{{ item.vm_name }}.{{ domain }}"
         state: poweredon
+      async: 300
+      poll: 0
+      register: start_vm_result
+      loop: "{{ target_vm_info }}"
 
-    - name: Wait until starting vmware tools
-      community.vmware.vmware_guest_tools_info:
+    - name: Make sure the tasks are until completion
+      ansible.builtin.async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 100
+      delay: 3
+      loop: "{{ start_vm_result.results }}"
+
+    - name: Wait until VMware tools available
+      community.vmware.vmware_guest_tools_wait:
         hostname: "{{ vcenter_hostname | default(lookup('env', 'VMWARE_HOST')) }}"
         username: "{{ vcenter_username | default(lookup('env', 'VMWARE_USER')) }}"
-        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"
+        password: "{{ vcenter_password | default(lookup('env', 'VMWARE_PASSWORD')) }}"  # noqa no-log-password
         validate_certs: "{{ validate_certs | default(false) }}"
-        datacenter: "{{ datacenter_name }}"
-        name: "{{ vm_name }}.{{ domain }}"
-      register: get_vm_tools_info_result
-      until: get_vm_tools_info_result.vmtools_info.vm_tools_running_status == "guestToolsRunning"
-      retries: 300
-      delay: 10
+        folder: "{{ vm_folder | default('vm') }}"
+        name: "{{ item.vm_name }}.{{ domain }}"
+      async: 300
+      poll: 0
+      register: vmware_tools_result
+      loop: "{{ target_vm_info }}"
+
+    - name: Make sure the tasks are until completion
+      ansible.builtin.async_status:
+        jid: "{{ item.ansible_job_id }}"
+      register: job_result
+      until: job_result.finished
+      retries: 100
+      delay: 3
+      loop: "{{ vmware_tools_result.results }}"

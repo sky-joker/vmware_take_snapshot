@@ -11,10 +11,6 @@ argument_specs:
         type: str
         required: false
         description: "The vm_foler is folder name that has vm"
-      vm_name:
-        type: str
-        required: true
-        description: "The vm_name is vm name"
       domain:
         type: str
         required: false
